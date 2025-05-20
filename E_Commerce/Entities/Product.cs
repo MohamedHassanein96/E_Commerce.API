@@ -1,5 +1,4 @@
-﻿
-namespace E_Commerce.Entities
+﻿namespace E_Commerce.Entities
 {
     public class Product :ISoftDeletable
     {
@@ -12,16 +11,26 @@ namespace E_Commerce.Entities
         public bool IsFeatured { get; set; }
         public int Quantity { get; set; }
         public ICollection<ProductImage> ProductImages { get; set; } = default!;
-        public int CategoryId { get; set; }
-        public Category Category { get; set; } = default!;
-        public int CompanyId { get; set; }
-        public Company Company { get; set; } = default!;
+        public int? CategoryId { get; set; } 
+        public Category Category { get; set; } = default!; 
 
         public List<Review> Reviews { get; set; } = [];
         public int Version { get; set; } = 0;
 
         public bool IsDeleted { get; set; }
         public DateTime? DateDeleted { get; set; }
+
+        public void Delete()
+        {
+            IsDeleted = true;
+            DateDeleted = DateTime.Now;
+        }
+
+        public void UndoDelete()
+        {
+            IsDeleted = false;
+            DateDeleted = null;
+        }
     }
 
 }

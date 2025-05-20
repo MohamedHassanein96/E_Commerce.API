@@ -1,20 +1,20 @@
 ﻿namespace E_Commerce.Controllers
 {
-    [Route("api/company/{companyId}/category/{categoryId}/[controller]")]
+    [Route("api/category/{categoryId}/[controller]")]
     [ApiController]
     public class ProductController(IProductService productService) : ControllerBase
     {
         private readonly IProductService _productService = productService;
 
         [HttpPost("")]
-        public async Task<IActionResult> Add([FromRoute] int companyId, [FromRoute] int categoryId,[FromForm] IFormFileCollection images, [FromForm] ProductRequest request, CancellationToken cancellationToken)
+        public async Task<IActionResult> Add( [FromRoute] int categoryId,[FromForm] IFormFileCollection images, [FromForm] ProductRequest request, CancellationToken cancellationToken)
         {
-            var productResponse = await _productService.AddAsync(companyId,categoryId,request,images ,cancellationToken);
+            var productResponse = await _productService.AddAsync(categoryId,request,images ,cancellationToken);
             if (productResponse is null)
             {
                 return NotFound();
             }
-            return CreatedAtAction(nameof(Get), new {productResponse.Id, companyId, categoryId},productResponse);
+            return CreatedAtAction(nameof(Get), new {productResponse.Id, categoryId},productResponse);
         }
         [HttpPut("{id}")]
         public async Task<IActionResult> Update([FromRoute] int companyId, [FromRoute] int categoryId, [FromRoute] int id ,[FromForm] UpdateProductRequest request, [FromForm] IFormFileCollection images, CancellationToken cancellationToken)
@@ -40,6 +40,16 @@
         public async Task<IActionResult> GetAll([FromRoute] int companyId, [FromRoute] int categoryId, CancellationToken cancellationToken)
         {
             return Ok(await _productService.GetAllAsync( companyId, categoryId ,cancellationToken));
+        }
+
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> Delete([FromRoute] int id, CancellationToken cancellationToken)
+        {
+            var isDeleted = await _productService.DeleteAsync(id, cancellationToken);
+            if (isDeleted)
+                return NoContent();
+            else
+                return NotFound();
         }
     }
 }

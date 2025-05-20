@@ -37,5 +37,14 @@
             var companyResponses = await _comapnyService.GetAllAsync(cancellationToken);
                 return Ok(companyResponses);
         }
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> Delete([FromRoute]int id,CancellationToken cancellationToken)
+        {
+            var isDeleted = await _comapnyService.DeleteAsync(id,cancellationToken);
+            if (isDeleted)
+                return NoContent();
+            else
+                return NotFound();
+        }
     }
 }

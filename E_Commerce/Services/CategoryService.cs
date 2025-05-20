@@ -40,5 +40,21 @@
             return true;
 
         }
+        public async Task<bool> DeleteAsync(int id, CancellationToken cancellationToken = default)
+        {
+            var category = await _context.Categories.Include(c => c.Products).FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+            if (category is null)
+                return false;
+
+
+            foreach (var product in category.Products)
+            {
+                _context.Remove(product);
+            }
+            _context.Categories.Remove(category);
+            await _context.SaveChangesAsync(cancellationToken);
+
+            return true;
+        }
     }
 }

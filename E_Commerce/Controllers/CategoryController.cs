@@ -42,5 +42,14 @@
             var categoryResponses = await _categoryService.GetAllAsync(cancellationToken);
             return Ok(categoryResponses);
         }
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> Delete([FromRoute] int id, CancellationToken cancellationToken)
+        {
+            var isDeleted = await _categoryService.DeleteAsync(id, cancellationToken);
+            if (isDeleted)
+                return NoContent();
+            else
+                return NotFound();
+        }
     }
 }

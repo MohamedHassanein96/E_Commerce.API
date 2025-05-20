@@ -5,20 +5,15 @@
         private readonly ApplicationDbContext _context = context;
         private readonly string _imagesPath = $"{webHostEnvironment.WebRootPath}/images";
 
-        public async Task<ProductResponse> AddAsync(int companyId, int categoryId, ProductRequest request, IFormFileCollection images, CancellationToken cancellationToken = default)
+        public async Task<ProductResponse> AddAsync(int categoryId, ProductRequest request, IFormFileCollection images, CancellationToken cancellationToken = default)
         {
-
-            var category = await _context.Categories.AnyAsync(x => x.Id == categoryId, cancellationToken);
-            var company = await _context.Companies.AnyAsync(x => x.Id == companyId, cancellationToken);
-            if (!category || !company)
+            var isFound = await _context.Categories.AnyAsync(x => x.Id == categoryId, cancellationToken);
+            if (!isFound)
                 return null!;
 
             var product = request.Adapt<Product>();
             product.CategoryId = categoryId;
-            product.CompanyId = companyId;
-
-
-
+    
             List<ProductImage> productImages = [];
 
             foreach (var image in images)
@@ -49,13 +44,15 @@
 
         public async Task<IEnumerable<ProductResponse>> GetAllAsync(int companyId, int categoryId, CancellationToken cancellationToken = default)
         {
-            return await _context.Products.Where(X => X.CategoryId == categoryId && X.CompanyId == companyId).ProjectToType<ProductResponse>()
+            return await _context.Products.Where(X => X.CategoryId == categoryId ).ProjectToType<ProductResponse>()
+            //return await _context.Products.Where(X => X.CategoryId == categoryId && X.CompanyId == companyId).ProjectToType<ProductResponse>()//todo
                 .AsNoTracking().ToListAsync(cancellationToken);
         }
 
         public async Task<ProductResponse> GetAsync(int companyId, int categoryId, int productId, CancellationToken cancellationToken = default)
         {
-            var product = await _context.Products.FirstOrDefaultAsync(x => x.Id == productId && x.CategoryId == categoryId && x.CompanyId == companyId, cancellationToken);
+            var product = await _context.Products.FirstOrDefaultAsync(x => x.Id == productId && x.CategoryId == categoryId , cancellationToken);
+         //   var product = await _context.Products.FirstOrDefaultAsync(x => x.Id == productId && x.CategoryId == categoryId && x.CompanyId == companyId, cancellationToken);//todp
             if (product is null)
             {
                 return null!;
@@ -67,7 +64,8 @@
         {
             var product = await _context.Products
                 .Include(p => p.ProductImages)
-                .FirstOrDefaultAsync(x => x.Id == productId && x.CategoryId == categoryId && x.CompanyId == companyId, cancellationToken);
+                .FirstOrDefaultAsync(x => x.Id == productId && x.CategoryId == categoryId , cancellationToken);
+               // .FirstOrDefaultAsync(x => x.Id == productId && x.CategoryId == categoryId && x.CompanyId == companyId, cancellationToken);//todo
 
             if (product is null)
                 return false;
@@ -109,7 +107,19 @@
 
             return true;
         }
+        public async Task<bool> DeleteAsync(int id, CancellationToken cancellationToken = default)
+        {
+            var product = await _context.Products.Include(c => c.ProductImages).FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+            if (product is null)
+                return false;
 
+            _context.ProductImages.RemoveRange(product.ProductImages);
+
+            _context.Products.Remove(product);
+
+            await _context.SaveChangesAsync(cancellationToken);
+            return true;
+        }
 
     }
 }

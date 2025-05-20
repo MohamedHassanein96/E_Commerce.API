@@ -12,7 +12,7 @@ namespace E_Commerce.Persistence.EntitiesConfiguration
              .HasOne(p => p.Category)
             .WithMany(c => c.Products)
             .HasForeignKey(p => p.CategoryId)
-            .OnDelete(DeleteBehavior.Restrict);
+            .OnDelete(DeleteBehavior.SetNull);
         }
     }
 }

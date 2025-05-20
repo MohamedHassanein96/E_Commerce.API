@@ -10,7 +10,7 @@
              .HasOne(c => c.Company)
              .WithMany(co => co.Categories)
              .HasForeignKey(c => c.CompanyId)
-             .OnDelete(DeleteBehavior.Restrict);
+             .OnDelete(DeleteBehavior.SetNull);
         }
     }
 }

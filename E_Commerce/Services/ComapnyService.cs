@@ -40,6 +40,27 @@
             return true;
         }
 
-      
+        public async Task<bool> DeleteAsync(int id, CancellationToken cancellationToken = default)
+        {
+            var company = await _context.Companies.Include(c => c.Categories).ThenInclude(c => c.Products).FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+            if (company is null)
+                return false;
+
+
+            foreach (var category in company.Categories)
+            {
+                foreach (var product in category.Products)
+                {
+                    product.Delete();
+                    _context.Products.Update(product);
+                }
+                 category.Delete();
+                _context.Categories.Update(category);
+            }
+            _context.Companies.Remove(company);
+            await _context.SaveChangesAsync(cancellationToken);
+
+            return true;
+        }
     }
 }
