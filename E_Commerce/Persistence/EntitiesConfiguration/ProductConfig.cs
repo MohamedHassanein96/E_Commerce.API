@@ -5,6 +5,7 @@ namespace E_Commerce.Persistence.EntitiesConfiguration
     {
         public void Configure(EntityTypeBuilder<Product> builder)
         {
+            builder.HasQueryFilter(x => !x.IsDeleted);
             builder.HasIndex(x => x.Id).IsUnique();
             builder.Property(x => x.Name).HasMaxLength(50);
             builder.Property(x => x.Description).HasMaxLength(150);

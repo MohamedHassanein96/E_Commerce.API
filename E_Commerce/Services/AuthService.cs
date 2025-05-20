@@ -12,7 +12,7 @@ namespace E_Commerce.Services
         public async Task<AuthResponse> GetTokenAsync(string email, string password, CancellationToken cancellationToken = default)
         {
             if (await _userManager.FindByEmailAsync(email) is not { } user)
-                return null;
+                return null!;
 
             var result = await _signInManager.PasswordSignInAsync(user, password, false, lockoutOnFailure: false);
             if (result.Succeeded)
@@ -21,7 +21,7 @@ namespace E_Commerce.Services
                 var response = new AuthResponse(user.Id, user.Email, user.FirstName, user.LastName, token, expiresIn);
                 return(response);
             }
-            return null;
+            return null!;
         }
     }
 }

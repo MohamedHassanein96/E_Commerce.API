@@ -12,7 +12,6 @@
             await _context.SaveChangesAsync(cancellationToken);
             return (company.Adapt<CompanyResponse>());
         }
-
         public async Task<IEnumerable<CompanyResponse>> GetAllAsync(CancellationToken cancellationToken = default)
         {
           return  await _context.Companies.ProjectToType<CompanyResponse>().AsNoTracking().ToListAsync(cancellationToken: cancellationToken);
@@ -21,11 +20,8 @@
         public async Task<CompanyResponse> GetAsync(int id, CancellationToken cancellationToken = default)
         {
             var company = await _context.Companies.FirstOrDefaultAsync(x => x.Id == id, cancellationToken: cancellationToken);
-            if (company is null) 
-                return null!;
+            return company is null ? null! : company.Adapt<CompanyResponse>();
 
-            
-            return company.Adapt<CompanyResponse>();
         }
         public async Task<bool> UpdateAsync(int id, UpdateCompanyRequest request , CancellationToken cancellationToken = default)
         {
@@ -51,16 +47,17 @@
             {
                 foreach (var product in category.Products)
                 {
-                    product.Delete();
-                    _context.Products.Update(product);
+
+                    _context.Products.Remove(product);
                 }
-                 category.Delete();
-                _context.Categories.Update(category);
+                _context.Categories.Remove(category);
             }
             _context.Companies.Remove(company);
             await _context.SaveChangesAsync(cancellationToken);
 
             return true;
         }
+
+     
     }
 }

@@ -5,9 +5,9 @@
         private readonly ApplicationDbContext _context = context;
         private readonly string _imagesPath = $"{webHostEnvironment.WebRootPath}/images";
 
-        public async Task<ProductResponse> AddAsync(int categoryId, ProductRequest request, IFormFileCollection images, CancellationToken cancellationToken = default)
+        public async Task<ProductResponse> AddAsync(int categoryId, ProductRequest request, UploadImagesRequest requestImages, CancellationToken cancellationToken = default)
         {
-            var isFound = await _context.Categories.AnyAsync(x => x.Id == categoryId, cancellationToken);
+            var isFound = await _context.Categories.AnyAsync(x => x.Id == categoryId , cancellationToken);
             if (!isFound)
                 return null!;
 
@@ -16,17 +16,23 @@
     
             List<ProductImage> productImages = [];
 
-            foreach (var image in images)
+            if (!Directory.Exists(_imagesPath))
             {
+                Directory.CreateDirectory(_imagesPath);
+            }
+
+            foreach (var image in requestImages.Images)
+            {
+                var uniqueFileName = $"{Guid.CreateVersion7()}{Path.GetExtension(image.FileName)}";
+                var path = Path.Combine(_imagesPath, uniqueFileName);
+
 
                 var productImage = new ProductImage
                 {
-                    ImageName = image.FileName,
+                    ImageName = uniqueFileName,
                     ContentType = image.ContentType,
                     ImageExtension = Path.GetExtension(image.FileName)
                 };
-
-                var path = Path.Combine(_imagesPath, image.FileName);
 
                 using var stream = File.Create(path);
                 await image.CopyToAsync(stream, cancellationToken);
@@ -42,17 +48,15 @@
             return product.Adapt<ProductResponse>();
         }
 
-        public async Task<IEnumerable<ProductResponse>> GetAllAsync(int companyId, int categoryId, CancellationToken cancellationToken = default)
+        public async Task<IEnumerable<ProductResponse>> GetAllAsync(int categoryId, CancellationToken cancellationToken = default)
         {
-            return await _context.Products.Where(X => X.CategoryId == categoryId ).ProjectToType<ProductResponse>()
-            //return await _context.Products.Where(X => X.CategoryId == categoryId && X.CompanyId == companyId).ProjectToType<ProductResponse>()//todo
+            return await _context.Products.Where(X => X.CategoryId == categoryId).ProjectToType<ProductResponse>()
                 .AsNoTracking().ToListAsync(cancellationToken);
         }
 
-        public async Task<ProductResponse> GetAsync(int companyId, int categoryId, int productId, CancellationToken cancellationToken = default)
+        public async Task<ProductResponse> GetAsync(int categoryId, int productId, CancellationToken cancellationToken = default)
         {
             var product = await _context.Products.FirstOrDefaultAsync(x => x.Id == productId && x.CategoryId == categoryId , cancellationToken);
-         //   var product = await _context.Products.FirstOrDefaultAsync(x => x.Id == productId && x.CategoryId == categoryId && x.CompanyId == companyId, cancellationToken);//todp
             if (product is null)
             {
                 return null!;
@@ -60,41 +64,41 @@
             return product.Adapt<ProductResponse>();
         }
 
-        public async Task<bool> UpdateAsync(int companyId, int categoryId, int productId, UpdateProductRequest request, IFormFileCollection images, CancellationToken cancellationToken = default)
+        public async Task<bool> UpdateAsync( int categoryId, int productId, UpdateProductRequest request, UpdateImagesRequest imagesRequest, CancellationToken cancellationToken = default)
         {
             var product = await _context.Products
                 .Include(p => p.ProductImages)
                 .FirstOrDefaultAsync(x => x.Id == productId && x.CategoryId == categoryId , cancellationToken);
-               // .FirstOrDefaultAsync(x => x.Id == productId && x.CategoryId == categoryId && x.CompanyId == companyId, cancellationToken);//todo
 
             if (product is null)
                 return false;
 
-         
-            _context.ProductImages.RemoveRange(product.ProductImages);
-
-        
-            var productImages = new List<ProductImage>();
-            foreach (var image in images)
+            if (imagesRequest is not null && imagesRequest.Images.Count > 0)
             {
-                var imageName = image.FileName;
-                var path = Path.Combine(_imagesPath, imageName);
+                _context.ProductImages.RemoveRange(product.ProductImages);
+                var productImages = new List<ProductImage>();
 
-                using var stream = File.Create(path);
-                await image.CopyToAsync(stream, cancellationToken);
-
-                var productImage = new ProductImage
+                foreach (var image in imagesRequest.Images!)
                 {
-                    ImageName = imageName,
-                    ContentType = image.ContentType,
-                    ImageExtension = Path.GetExtension(imageName),
-                    ProductId = product.Id 
-                };
+                    var uniqueFileName = $"{Guid.CreateVersion7()}{Path.GetExtension(image.FileName)}";
+                    var path = Path.Combine(_imagesPath, uniqueFileName);
 
-                productImages.Add(productImage);
+                    using var stream = File.Create(path);
+                    await image.CopyToAsync(stream, cancellationToken);
+
+                    var productImage = new ProductImage
+                    {
+                        ImageName = uniqueFileName,
+                        ContentType = image.ContentType,
+                        ImageExtension = Path.GetExtension(uniqueFileName),
+                        ProductId = product.Id
+                    };
+
+                    productImages.Add(productImage);
+                }
+                await _context.ProductImages.AddRangeAsync(productImages);
+
             }
-
-            _context.ProductImages.AddRange(productImages);
 
 
             product = request.Adapt(product);
