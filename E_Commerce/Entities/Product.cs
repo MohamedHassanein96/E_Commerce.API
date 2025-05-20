@@ -1,4 +1,5 @@
-﻿namespace E_Commerce.Entities
+﻿
+namespace E_Commerce.Entities
 {
     public class Product :ISoftDeletable
     {

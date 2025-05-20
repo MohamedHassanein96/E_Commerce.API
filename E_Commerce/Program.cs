@@ -31,7 +31,6 @@ public class Program
 
         // Scoped services
         builder.Services.AddScoped<IProductService, ProductService>();
-        builder.Services.AddScoped<IImageService, ImageService>();
         builder.Services.AddScoped<ICategoryService, CategoryService>();
         builder.Services.AddScoped<IComapnyService, ComapnyService>();
         builder.Services.AddScoped<ICartService, CartService>();

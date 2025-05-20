@@ -16,6 +16,7 @@ global using E_Commerce.Contracts.Image;
 global using Microsoft.AspNetCore.Identity;
 global using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 global using E_Commerce.Contracts.Cart;
+global using E_Commerce.SoftDelete;
 
 
 

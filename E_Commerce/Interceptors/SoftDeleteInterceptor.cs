@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore.Diagnostics;
+﻿using E_Commerce.SoftDelete;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 
 namespace E_Commerce.Interceptors
 {

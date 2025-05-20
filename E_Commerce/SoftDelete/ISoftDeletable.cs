@@ -1,4 +1,4 @@
-﻿namespace E_Commerce.ISoftDeletable
+﻿namespace E_Commerce.SoftDelete
 {
     public interface ISoftDeletable
     { 

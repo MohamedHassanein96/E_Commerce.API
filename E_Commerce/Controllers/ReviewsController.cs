@@ -2,17 +2,10 @@
 
 [ApiController]
 [Route("api/[controller]")]
-public class ReviewsController: ControllerBase
+public class ReviewsController(IHuggingFaceService huggingFaceService, ApplicationDbContext context) : ControllerBase
 {
-    private readonly IHuggingFaceService _huggingFaceService;
-    private readonly ApplicationDbContext _context ;
-
-    public ReviewsController(IHuggingFaceService huggingFaceService, ApplicationDbContext context)
-    {
-        _huggingFaceService = huggingFaceService;
-        _context = context;
-    }
-
+    private readonly IHuggingFaceService _huggingFaceService = huggingFaceService;
+    private readonly ApplicationDbContext _context = context;
 
     [HttpPost("add")]
     public async Task<IActionResult> AddReview([FromBody] ReviewRequest request)
