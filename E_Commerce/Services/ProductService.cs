@@ -21,7 +21,7 @@
                 Directory.CreateDirectory(_imagesPath);
             }
 
-            foreach (var image in requestImages.Images)
+            foreach (var image in request.Images)
             {
                 var uniqueFileName = $"{Guid.CreateVersion7()}{Path.GetExtension(image.FileName)}";
                 var path = Path.Combine(_imagesPath, uniqueFileName);

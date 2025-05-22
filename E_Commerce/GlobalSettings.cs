@@ -12,7 +12,6 @@ global using E_Commerce.Contracts.Category;
 global using E_Commerce.Contracts.Product;
 global using E_Commerce.Settings;
 global using E_Commerce.Contracts.Common;
-global using E_Commerce.Contracts.Image;
 global using Microsoft.AspNetCore.Identity;
 global using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 global using E_Commerce.Contracts.Cart;

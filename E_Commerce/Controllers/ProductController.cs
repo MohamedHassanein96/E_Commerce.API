@@ -1,5 +1,4 @@
-﻿
-namespace E_Commerce.Controllers
+﻿namespace E_Commerce.Controllers
 {
     [Route("api/category/{categoryId}/[controller]")]
     [ApiController]
@@ -8,9 +7,9 @@ namespace E_Commerce.Controllers
         private readonly IProductService _productService = productService;
 
         [HttpPost("")]
-        public async Task<IActionResult> Add( [FromRoute] int categoryId,[FromForm] UploadImagesRequest requestImages, [FromForm] ProductRequest request, CancellationToken cancellationToken)
+        public async Task<IActionResult> Add( [FromRoute] int categoryId, [FromForm] ProductRequest request, CancellationToken cancellationToken)
         {
-            var productResponse = await _productService.AddAsync(categoryId,request, requestImages, cancellationToken);
+            var productResponse = await _productService.AddAsync(categoryId,request, cancellationToken);
             if (productResponse is null)
             {
                 return NotFound();
@@ -28,7 +27,7 @@ namespace E_Commerce.Controllers
             return Ok();
         }
         [HttpGet("{id}")]
-        public async Task<IActionResult> Get([FromRoute] int companyId, [FromRoute] int categoryId, [FromRoute] int id, CancellationToken cancellationToken)
+        public async Task<IActionResult> Get( [FromRoute] int categoryId, [FromRoute] int id, CancellationToken cancellationToken)
         {
             var product = await _productService.GetAsync( categoryId, id, cancellationToken);
             if (product is null)
