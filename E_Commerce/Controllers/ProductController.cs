@@ -18,9 +18,9 @@ namespace E_Commerce.Controllers
             return CreatedAtAction(nameof(Get), new { id = productResponse.Id, categoryId},productResponse);
         }
         [HttpPut("{id}")]
-        public async Task<IActionResult> Update( [FromRoute] int categoryId, [FromRoute] int id ,[FromForm]  UpdateProductRequest request, [FromForm] UpdateImagesRequest requestImages, CancellationToken cancellationToken)
+        public async Task<IActionResult> Update( [FromRoute] int categoryId, [FromRoute] int id ,[FromForm]  UpdateProductRequest request, CancellationToken cancellationToken)
         {
-            var productIsUpdated = await _productService.UpdateAsync( categoryId, id ,request, requestImages, cancellationToken);
+            var productIsUpdated = await _productService.UpdateAsync( categoryId, id ,request, cancellationToken);
             if (!productIsUpdated)
             {
                 return NotFound();

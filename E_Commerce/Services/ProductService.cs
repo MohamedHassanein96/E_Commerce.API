@@ -64,7 +64,7 @@
             return product.Adapt<ProductResponse>();
         }
 
-        public async Task<bool> UpdateAsync( int categoryId, int productId, UpdateProductRequest request, UpdateImagesRequest imagesRequest, CancellationToken cancellationToken = default)
+        public async Task<bool> UpdateAsync( int categoryId, int productId, UpdateProductRequest request, CancellationToken cancellationToken = default)
         {
             var product = await _context.Products
                 .Include(p => p.ProductImages)
@@ -73,12 +73,12 @@
             if (product is null)
                 return false;
 
-            if (imagesRequest is not null && imagesRequest.Images.Count > 0)
+            if (request.Images is not null && request.Images.Count > 0)
             {
                 _context.ProductImages.RemoveRange(product.ProductImages);
                 var productImages = new List<ProductImage>();
 
-                foreach (var image in imagesRequest.Images!)
+                foreach (var image in request.Images!)
                 {
                     var uniqueFileName = $"{Guid.CreateVersion7()}{Path.GetExtension(image.FileName)}";
                     var path = Path.Combine(_imagesPath, uniqueFileName);

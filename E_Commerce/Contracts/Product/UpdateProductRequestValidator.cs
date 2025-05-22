@@ -9,6 +9,15 @@
             RuleFor(x => x.Description).NotEmpty().MaximumLength(150);
             RuleFor(x => x.Price).NotEmpty();
             RuleFor(x => x.Quantity).NotEmpty();
+
+            When(x => x.Images != null && x.Images.Any(), () =>
+            {
+                RuleForEach(x => x.Images!)
+                    .SetValidator(new ImageSizeValidator())
+                    .SetValidator(new BlockedSignatureValidator())
+                    .SetValidator(new ImageNameValidator())
+                    .SetValidator(new AllowedImagesSignatureValidator());
+            });
         }
     }
 }
