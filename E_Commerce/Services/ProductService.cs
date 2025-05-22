@@ -5,7 +5,7 @@
         private readonly ApplicationDbContext _context = context;
         private readonly string _imagesPath = $"{webHostEnvironment.WebRootPath}/images";
 
-        public async Task<ProductResponse> AddAsync(int categoryId, ProductRequest request, UploadImagesRequest requestImages, CancellationToken cancellationToken = default)
+        public async Task<ProductResponse> AddAsync(int categoryId, ProductRequest request, CancellationToken cancellationToken = default)
         {
             var isFound = await _context.Categories.AnyAsync(x => x.Id == categoryId , cancellationToken);
             if (!isFound)
