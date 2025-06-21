@@ -25,9 +25,9 @@
     <PackageReference Include="Stripe.net" Version="48.1.0" />
   </ItemGroup>
 
-  <ItemGroup>
+
+	<ItemGroup>
     <Folder Include="Migrations\" />
-    <Folder Include="wwwroot\" />
   </ItemGroup>
 
 </Project>

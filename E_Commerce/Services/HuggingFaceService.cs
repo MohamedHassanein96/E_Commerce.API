@@ -38,13 +38,11 @@ namespace E_Commerce.Services
 
             var responseJson = await response.Content.ReadAsStringAsync();
 
-            // ✅ عشان يتطابق مع label و score من الـ JSON
             var options = new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true
             };
 
-            // ✅ تعديل الـ Deserialize بالشكل الصحيح
             var parsed = JsonSerializer.Deserialize<List<List<SentimentResult>>>(responseJson, options);
 
             var bestResult = parsed?.FirstOrDefault()?.OrderByDescending(r => r.Score).FirstOrDefault();

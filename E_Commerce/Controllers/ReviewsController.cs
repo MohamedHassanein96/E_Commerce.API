@@ -10,8 +10,7 @@ public class ReviewsController(IHuggingFaceService huggingFaceService, Applicati
     [HttpPost("add")]
     public async Task<IActionResult> AddReview([FromBody] ReviewRequest request)
     {
-        if (string.IsNullOrWhiteSpace(request.UserReview))
-            return BadRequest("Please provide a review text.");
+      
 
         var sentiment = await _huggingFaceService.AnalyzeSentimentAsync(request.UserReview);
 
