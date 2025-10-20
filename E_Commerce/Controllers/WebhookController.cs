@@ -1,77 +1,54 @@
-﻿using Stripe;
-using Stripe.Checkout;
-namespace E_Commerce.Controllers
+﻿namespace E_Commerce.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class WebhookController(IConfiguration configuration, IWebhookService webhookService) : ControllerBase
+    public class WebhookController : ControllerBase
     {
-        private readonly IConfiguration _configuration = configuration;
-        private readonly IWebhookService _webhookService = webhookService;
+        private readonly IWebhookService _webhookService;
+        private readonly IInvoiceService _invoiceService;
 
-        [HttpPost]
+        public WebhookController( IWebhookService webhookService, IInvoiceService invoiceService)
+        {
+            _webhookService = webhookService;
+            _invoiceService = invoiceService;
+        }
+
+        [HttpPost("")]
         public async Task<IActionResult> Index()
         {
             var json = await new StreamReader(HttpContext.Request.Body).ReadToEndAsync();
-            var endpointSecret = _configuration["Stripe:WebhookSecret"];
-            string stripeSignature = Request.Headers["Stripe-Signature"];
+            var stripeSignature = Request.Headers["Stripe-Signature"];
 
             try
             {
-                var stripeEvent = EventUtility.ConstructEvent(json, stripeSignature, endpointSecret);
-
-                if (stripeEvent.Type == "checkout.session.completed")
-                {
-                    var session = stripeEvent.Data.Object as Session;
-
-                    if (session != null)
-                    {
-                        Console.WriteLine($"[Webhook] Session ID received: {session.Id}");
-
-                        var paymentIntentId = session.PaymentIntentId;
-                        if (!string.IsNullOrEmpty(paymentIntentId))
-                        {
-                            var service = new PaymentIntentService();
-                            var paymentIntent = await service.GetAsync(paymentIntentId);
-
-                            if (paymentIntent.Status == "succeeded")
-                            {
-                                Console.WriteLine("payment is Done");
-                                await _webhookService.MarkOrderAsPaidAsync(session.Id);
-                            }
-                            else
-                            {
-                                Console.WriteLine($"payment isn't successful: {paymentIntent.Status}");
-                            }
-
-                            return Ok(); 
-                        }
-                        else
-                        {
-                            Console.WriteLine(" PaymentIntent ID is null or empty.");
-                            return BadRequest();
-                        }
-                    }
-                    else
-                    {
-                        Console.WriteLine(" Session object is null.");
-                        return BadRequest();
-                    }
-                }
-
+                await _webhookService.HandleWebhookAsync(json, stripeSignature!);
                 return Ok();
             }
-            catch (StripeException e)
+            catch
             {
-                Console.WriteLine($"Stripe webhook error: {e.Message}");
                 return BadRequest();
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine($"General webhook error: {e.Message}");
-                return StatusCode(500);
             }
 
         }
+
+        [HttpGet("invoices/{orderId}")]
+        public async Task<IActionResult> GetInvoice(int orderId)
+        {
+            try
+            {
+                var fileBytes = await _invoiceService.GetInvoiceFileAsync(orderId);
+                return File(fileBytes, "application/pdf", $"invoice_{orderId}.pdf");
+            }
+            catch (FileNotFoundException)
+            {
+                return NotFound("Invoice not found.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[InvoiceController] Error: {ex.Message}");
+                return StatusCode(500, "Internal Server Error");
+            }
+        }
+       
     }
 }

@@ -1,6 +1,7 @@
 ﻿using E_Commerce.CustomExceptions;
 using E_Commerce.Extension;
 using Stripe.Checkout;
+using OneOf;
 
 namespace E_Commerce.Services
 {
@@ -10,212 +11,276 @@ namespace E_Commerce.Services
         private readonly ApplicationDbContext _context = context;
         private readonly IHttpContextAccessor _httpContextAccessor = httpContextAccessor;
 
-        public async Task<bool> AddToCartAsync(AddToCartRequest request, CancellationToken cancellationToken = default)
+        public async Task<OneOf<bool, ErrorResponse>> AddToCartAsync(AddToCartRequest request, CancellationToken cancellationToken = default)
         {
       
-            var userId = _httpContextAccessor.HttpContext?.User.GetUserId();
+            var product = await _context.Products.FindAsync(request.ProductId,cancellationToken);
+            if (product == null)
+                return new ErrorResponse("product not found");
 
+            if (product.StockForReservation < request.Quantity)
+                return new ErrorResponse($"available Quantity is {product.AvailableStock}");
+
+            var userId = _httpContextAccessor.HttpContext?.User.GetUserId();
             if (string.IsNullOrEmpty(userId))
-                return false;
+                return new ErrorResponse("User Not Found");
 
             var user = await _userManager.FindByIdAsync(userId!);
             if (user is null)
-                return  false;
+                return new ErrorResponse("Invalid User.");
 
-            Cart cart = new ()
+
+            using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+            try
             {
-                Count = request.Count,
-                ProductId = request.ProductId,
-                ApplicationUserId = userId!
 
-            };
+                product.ReservedStock += request.Quantity;
 
-            var existingCartItem = await _context.Carts.FirstOrDefaultAsync(x => x.ProductId == request.ProductId && x.ApplicationUserId == userId, cancellationToken: cancellationToken);
-            if (existingCartItem is null)
-            {
-                await _context.Carts.AddAsync(cart, cancellationToken);
+                var existingCartItem = await _context
+                    .Carts
+                    .FirstOrDefaultAsync(x => x.ProductId == request.ProductId &&
+                    x.ApplicationUserId == userId,
+                    cancellationToken: cancellationToken);
+
+                if (existingCartItem is null)
+                {
+                    Cart cart = new()
+                    {
+                        Quantity = request.Quantity,
+                        ProductId = request.ProductId,
+                        ApplicationUserId = userId!
+                    };
+                    await _context.Carts.AddAsync(cart, cancellationToken);
+                }
+                else
+                {
+                    existingCartItem.Quantity += request.Quantity;
+                }
+
+
+                await _context.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+                return true;
             }
-            else
+            catch (DbUpdateConcurrencyException)
             {
-                existingCartItem.Count += request.Count;
+                await transaction.RollbackAsync(cancellationToken);
+                return new ErrorResponse("An unexpected error occurred while processing your payment. Please try again later.");
             }
-            await _context.SaveChangesAsync(cancellationToken);
-            return true;
         }
 
-        public async Task<CartResponse> GetCartDetailsAsync(CancellationToken cancellationToken = default)
+        public async Task<OneOf<CartResponse,ErrorResponse>> GetCartDetailsAsync(CancellationToken cancellationToken = default)
         {
             var userId = _httpContextAccessor.HttpContext?.User.GetUserId();
             if (string.IsNullOrEmpty(userId))
-                return null;
+                return new ErrorResponse("User Not Found");
 
 
 
             var user = await _userManager.FindByIdAsync(userId!);
             if (user is null)
-                return null!;
+                return new ErrorResponse("Invalid User");
 
             var cartItems = await _context.Carts.Where(x => x.ApplicationUserId == userId).Include(x => x.Product).ToListAsync(cancellationToken);
 
-            var totalPrice = cartItems.Sum(x => x.Product.Price * x.Count);
+            var totalPrice = cartItems.Sum(x => x.Product.Price * x.Quantity); 
 
             var details = cartItems.Select(x =>
-            new CartDetailsResponse(x.Product.Name, x.Count)).ToList();
+            new CartDetailsResponse(x.Product.Name, x.Quantity)).ToList();
 
             return new CartResponse(details, totalPrice);
         }
 
-        public async Task<bool> DecrementAsync(DecrementRequest request, CancellationToken cancellationToken = default)
+        public async Task<OneOf<bool,ErrorResponse>> DecrementAsync(DecrementRequest request, CancellationToken cancellationToken = default)
         {
             var userId = _httpContextAccessor.HttpContext?.User.GetUserId();
 
             if (string.IsNullOrEmpty(userId))
-                return false;
-            
+                return new ErrorResponse("User Not Found");
+
+
             var user = await _userManager.FindByIdAsync(userId!);
             if (user is null)
-                return false;
+                return new ErrorResponse("Invalid User");
 
-           var cartItem =  await _context.Carts.FirstOrDefaultAsync(x => x.ApplicationUserId == userId && x.ProductId == request.ProductId, cancellationToken);
-            if (cartItem is null )
-                return false;
-            
-            cartItem.Count-- ;
 
-            if (cartItem.Count <= 0)
-                _context.Carts.Remove(cartItem);
-            
-            await _context.SaveChangesAsync(cancellationToken);
-            return true;
+            using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+
+            try
+            {
+                var product = await _context.Products.FirstOrDefaultAsync(p => p.Id == request.ProductId, cancellationToken);
+                if (product is null) return false;
+
+                var cartItem = await _context.Carts.FirstOrDefaultAsync(x =>
+                    x.ApplicationUserId == userId && x.ProductId == request.ProductId, cancellationToken);
+
+                if (cartItem is null) return false;
+
+                cartItem.Quantity--;
+
+                product.ReservedStock--; // التعديل المهم هنا
+
+                if (cartItem.Quantity <= 0)
+                    _context.Carts.Remove(cartItem);
+
+                await _context.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+
+                return true;
+            }
+            catch
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                throw;
+            }
+
         }
 
-        public async Task<bool> IncrementAsync(IncrementRequest request, CancellationToken cancellationToken = default)
+        public async Task<OneOf<bool, ErrorResponse>> IncrementAsync(IncrementRequest request, CancellationToken cancellationToken = default)
         {
+            var product = await _context.Products.FirstOrDefaultAsync(p => p.Id == request.ProductId, cancellationToken);
+
             var userId = _httpContextAccessor.HttpContext?.User.GetUserId();
 
             if (string.IsNullOrEmpty(userId))
-                return false;
+                return new ErrorResponse("User Not Found");
 
             var user = await _userManager.FindByIdAsync(userId!);
             if (user is null)
-                return false;
+                return new ErrorResponse("Invalid User");
 
             var cart = await _context.Carts.FirstOrDefaultAsync(x => x.ApplicationUserId == userId && x.ProductId == request.ProductId, cancellationToken);
             if (cart is null)
-                return false;
-            
-            cart.Count++;
+                return new ErrorResponse("Cart is Empty");
+
+            cart.Quantity++;
+            product.ReservedStock += 1;
+
             await _context.SaveChangesAsync(cancellationToken);
             return true;
         }
 
-        public async Task<bool> DeleteAsync(DeleteRequest request, CancellationToken cancellationToken = default)
+        public async Task<OneOf<bool,ErrorResponse>> DeleteAsync(DeleteRequest request, CancellationToken cancellationToken = default)
         {
+            var product = await _context.Products.FirstOrDefaultAsync(p => p.Id == request.ProductId, cancellationToken);
+
             var userId = _httpContextAccessor.HttpContext?.User.GetUserId();
             if (string.IsNullOrEmpty(userId))
-                return false;
-
+                return new ErrorResponse("User Not Found");
 
             var user = await _userManager.FindByIdAsync(userId!);
             if (user is null)
-                return false;
+                return new ErrorResponse("Invalid User");
 
             var cartItem = await _context.Carts.FirstOrDefaultAsync(x => x.ApplicationUserId == userId && x.ProductId == request.ProductId, cancellationToken);
             if (cartItem is null)
-                return false;
-            
+                return new ErrorResponse("Cart is Empty");
+
+            product.ReservedStock -= cartItem.Quantity;
             _context.Carts.Remove(cartItem);
             await _context.SaveChangesAsync(cancellationToken);
             return true;
         }
 
-        public async Task<PayResponse> PayAsync(CancellationToken cancellationToken = default)
+        public async Task<OneOf<PayResponse,ErrorResponse>> PayAsync(CancellationToken cancellationToken = default)
         {
             var userId = _httpContextAccessor.HttpContext?.User.GetUserId();
             if (string.IsNullOrEmpty(userId))
-                return null!;
+                return new ErrorResponse("User not found.");
 
             var user = await _userManager.FindByIdAsync(userId);
             if (user is null)
-                return null!;
+                return new ErrorResponse("Invalid user.");
 
 
-            var CartItem = await _context.Carts.Where(x => x.ApplicationUserId == userId).Include(x => x.Product).ToListAsync(cancellationToken);
+            var cartItems = await _context.Carts.Where(x => x.ApplicationUserId == userId).Include(x => x.Product).ToListAsync(cancellationToken);
 
-            if (CartItem.Count <= 0)
-                return null!;
+            if (!cartItems.Any())
+                return new ErrorResponse("Cart is empty.");
 
+            using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
 
-            var order = new Order
+            try
             {
-                ApplicationUserId = userId,
-                Items = CartItem.Select(x => new OrderItem
+                var order = new Order
                 {
-                    ProductId = x.ProductId,
-                    Quantity = x.Count,
-                    UnitPrice = x.Product.Price
-                }).ToList(),
-                PaymentStatus = PaymentStatus.Pending
-            };
-           
-            foreach (var item in CartItem)
-            {
-
-                var product = await _context.Products.FirstOrDefaultAsync(p => p.Id == item.ProductId, cancellationToken);
-                if (product is null)
-                {
-                    throw new Exception($"Product {item.Product.Name} is Not Found.");
-                }
-
-
-                if (product.Quantity < item.Count)
-                {
-                   throw new InsufficientStockException(item.Product.Name, item.Count, item.Product.Quantity);
-                }
-
-                if (product.Version != item.Product.Version)
-                {
-                    throw new Exception($"Product {item.Product.Name} has been modified since the last one.");
-                }
-                product.Quantity -= item.Count;
-                product.Version++;
-            }
-
-            _context.Orders.Add(order);
-            await _context.SaveChangesAsync(cancellationToken);
-
-            var options = new SessionCreateOptions
-            {
-                PaymentMethodTypes = new List<string> { "card" },
-                LineItems = new List<SessionLineItemOptions>(),
-                Mode = "payment",
-                SuccessUrl = $"{"https://localhost:4200"}/checkout/success",
-                CancelUrl = $"{"https://localhost:4200"}/checkout/cancel",
-            };
-
-            foreach (var item in CartItem)
-            {
-                options.LineItems.Add(new SessionLineItemOptions
-                {
-                    PriceData = new SessionLineItemPriceDataOptions
+                    ApplicationUserId = userId,
+                    Items = cartItems.Select(x => new OrderItem
                     {
-                        Currency = "egp",
-                        ProductData = new SessionLineItemPriceDataProductDataOptions
+                        ProductId = x.ProductId,
+                        Quantity = x.Quantity,
+                        UnitPrice = x.Product.Price
+                    }).ToList(),
+                    PaymentStatus = PaymentStatus.Pending
+                };
+
+                foreach (var item in cartItems)
+                {
+                    var product = await _context.Products
+                        .FirstOrDefaultAsync(p => p.Id == item.ProductId, cancellationToken);
+
+                    if (product is null)
+                        throw new Exception($"Product {item.Product.Name} not found.");
+
+                    if (product.StockForReservation < item.Quantity)
+                        throw new InsufficientStockException(item.Product.Name, item.Quantity, product.StockForReservation);
+
+                    if (product.Version != item.Product.Version)
+                        throw new Exception($"Product {item.Product.Name} has been modified.");
+
+                  
+                    product.Version++;
+                }
+
+                _context.Orders.Add(order);
+                await _context.SaveChangesAsync(cancellationToken);
+
+
+                var options = new SessionCreateOptions
+                {
+                    PaymentMethodTypes = new List<string> { "card" },
+                    LineItems = new List<SessionLineItemOptions>(),
+                    Mode = "payment",
+                    SuccessUrl = "https://localhost:4200/checkout/success?session_id={CHECKOUT_SESSION_ID}",
+                    CancelUrl = $"{"https://localhost:4200"}/checkout/cancel",
+                };
+
+                foreach (var item in cartItems)
+                {
+                    options.LineItems.Add(new SessionLineItemOptions
+                    {
+                        PriceData = new SessionLineItemPriceDataOptions
                         {
-                            Name = item.Product.Name,
+                            Currency = "egp",
+                            ProductData = new SessionLineItemPriceDataProductDataOptions
+                            {
+                                Name = item.Product.Name,
+                            },
+                            UnitAmount = (long)item.Product.Price * 100,
                         },
-                        UnitAmount = (long)item.Product.Price * 100,
-                    },
-                    Quantity = item.Count,
-                });
+                        Quantity = item.Quantity,
+                    });
+                }
+                var service = new SessionService();
+                var session = await service.CreateAsync(options);
+
+                order.StripeSessionId = session.Id;
+                await _context.SaveChangesAsync(cancellationToken);
+
+                // حذف محتويات الكارت بعد تسجيل الأوردر
+                _context.Carts.RemoveRange(cartItems);
+                await _context.SaveChangesAsync(cancellationToken);
+
+                await transaction.CommitAsync(cancellationToken);
+                var invoiceUrl = $"https://yourapp.com/invoices/{session.Id}.pdf";
+
+                return new PayResponse("Success", session.Id ,null, session.Url);
             }
-            var service = new SessionService();
-            var session = await service.CreateAsync(options);
-
-            order.StripeSessionId = session.Id;
-            await _context.SaveChangesAsync(cancellationToken);
-
-            return new PayResponse(session.Url);
-        }
+            catch
+            {
+                await transaction.RollbackAsync(cancellationToken);
+                throw;
+            }
+        } 
     }
 }

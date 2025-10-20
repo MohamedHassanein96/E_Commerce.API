@@ -10,7 +10,10 @@ namespace E_Commerce.Entities
         public double? Rate { get; set; }
         public bool IsTopRated { get; set; }
         public bool IsFeatured { get; set; }
-        public int Quantity { get; set; }
+        //public int Quantity { get; set; }
+        public int AvailableStock { get; set; } // Stock فعلي للبيع
+        public int ReservedStock { get; set; }  // Stock محجوز في Cart
+
         public ICollection<ProductImage> ProductImages { get; set; } = default!;
         public int? CategoryId { get; set; } 
         public Category Category { get; set; } = default!; 
@@ -20,6 +23,7 @@ namespace E_Commerce.Entities
 
         public bool IsDeleted { get; set; }
         public DateTime? DateDeleted { get; set; }
+        public int StockForReservation => AvailableStock - ReservedStock;
 
         public void Delete()
         {

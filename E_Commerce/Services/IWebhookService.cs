@@ -2,6 +2,8 @@
 {
     public interface IWebhookService
     {
-        Task MarkOrderAsPaidAsync(string stripeSessionId);
+        Task MarkOrderAsPaidAsync(string stripeSessionId); 
+        Task HandleWebhookAsync(string json, string stripeSignature);
+
     }
 }

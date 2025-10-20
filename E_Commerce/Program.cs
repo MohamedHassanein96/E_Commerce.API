@@ -4,6 +4,7 @@ using FluentValidation.AspNetCore;
 using MapsterMapper;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using QuestPDF.Infrastructure;
 using Stripe;
 using System.Text;
 using ProductService = E_Commerce.Services.ProductService;
@@ -14,6 +15,7 @@ public class Program
     public static void Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
+        QuestPDF.Settings.License = LicenseType.Community;
 
         // Add services to the container.
         builder.Services.AddControllers();
@@ -37,6 +39,8 @@ public class Program
         builder.Services.AddScoped<IWebhookService, WebhookService>();
         builder.Services.AddScoped<IJwtProvider, JwtProvider>();
         builder.Services.AddScoped<IAuthService, AuthService>();
+        builder.Services.AddScoped<IInvoiceService, E_Commerce.Services.InvoiceService>();
+
         builder.Services.AddHttpClient<IHuggingFaceService, HuggingFaceService>();
 
 

@@ -9,7 +9,8 @@
         public PaymentStatus PaymentStatus { get; set; } = PaymentStatus.Pending;
         public string StripeSessionId { get; set; } = string.Empty;
         public DateTime? PaidAt { get; set; }
-        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow; 
+        public string? InvoicePath { get; set; }
     }
     public enum PaymentStatus
     {
