@@ -8,6 +8,7 @@ using QuestPDF.Infrastructure;
 using Stripe;
 using System.Text;
 using ProductService = E_Commerce.Services.ProductService;
+using ReviewService = E_Commerce.Services.ReviewService;
 
 
 public class Program
@@ -39,6 +40,7 @@ public class Program
         builder.Services.AddScoped<IWebhookService, WebhookService>();
         builder.Services.AddScoped<IJwtProvider, JwtProvider>();
         builder.Services.AddScoped<IAuthService, AuthService>();
+        builder.Services.AddScoped<IReviewService, ReviewService>();
         builder.Services.AddScoped<IInvoiceService, E_Commerce.Services.InvoiceService>();
 
         builder.Services.AddHttpClient<IHuggingFaceService, HuggingFaceService>();

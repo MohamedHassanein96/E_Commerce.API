@@ -1,15 +1,14 @@
 ﻿using Microsoft.AspNetCore.Authorization;
-using OneOf.Types;
 
 namespace E_Commerce.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
     [Authorize]
-    public class CartController(ICartService cartService ) : ControllerBase
+    public class CartController(ICartService cartService) : ControllerBase
     {
         private readonly ICartService _cartService = cartService;
-        
+
         [HttpPost("")]
         public async Task<IActionResult> Add([FromBody] AddToCartRequest request, CancellationToken cancellationToken)
         {
@@ -17,13 +16,13 @@ namespace E_Commerce.Controllers
             return result.Match<IActionResult>(
                   success => Ok(success),
                   error => BadRequest(error.Message));
-                
+
         }
 
         [HttpGet("")]
         public async Task<IActionResult> Get(CancellationToken cancellationToken)
         {
-           var result = await _cartService.GetCartDetailsAsync(cancellationToken);
+            var result = await _cartService.GetCartDetailsAsync(cancellationToken);
 
             return result.Match<IActionResult>(
               success => Ok(),
@@ -64,7 +63,7 @@ namespace E_Commerce.Controllers
         }
 
         [HttpPost("pay")]
-        public async Task<IActionResult> Pay( CancellationToken cancellationToken)
+        public async Task<IActionResult> Pay(CancellationToken cancellationToken)
         {
             var result = await _cartService.PayAsync(cancellationToken);
             return result.Match<IActionResult>(

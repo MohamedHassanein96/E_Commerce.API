@@ -1,4 +1,6 @@
-﻿namespace E_Commerce.Services
+﻿using OneOf;
+
+namespace E_Commerce.Services
 {
     public interface IProductService
     {
@@ -7,5 +9,8 @@
         Task<ProductResponse> GetAsync(int categoryId,int productId, CancellationToken cancellationToken = default);
         Task<IEnumerable<ProductResponse>> GetAllAsync( int categoryId, CancellationToken cancellationToken = default);
         Task<bool> DeleteAsync(int id, CancellationToken cancellationToken = default);
+        Task<OneOf<bool, ErrorResponse>> ToggleStatus(int id, ProductHighlightType type, CancellationToken cancellationToken = default);
+        Task<IEnumerable<ProductResponse>> GetByHighlightTypeAsync(ProductHighlightType type, CancellationToken cancellationToken = default);
+
     }
 }

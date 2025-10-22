@@ -1,129 +1,150 @@
-﻿namespace E_Commerce.Services
+﻿using OneOf;
+
+namespace E_Commerce.Services;
+
+public class ProductService(ApplicationDbContext context, IWebHostEnvironment webHostEnvironment) : IProductService
 {
-    public class ProductService(ApplicationDbContext context, IWebHostEnvironment webHostEnvironment) : IProductService
+    private readonly ApplicationDbContext _context = context;
+    private readonly string _imagesPath = $"{webHostEnvironment.WebRootPath}/images";
+
+    public async Task<ProductResponse> AddAsync(int categoryId, ProductRequest request, CancellationToken cancellationToken = default)
     {
-        private readonly ApplicationDbContext _context = context;
-        private readonly string _imagesPath = $"{webHostEnvironment.WebRootPath}/images";
+        var isFound = await _context.Categories.AnyAsync(x => x.Id == categoryId, cancellationToken);
+        if (!isFound)
+            return null!;
 
-        public async Task<ProductResponse> AddAsync(int categoryId, ProductRequest request, CancellationToken cancellationToken = default)
+        var product = request.Adapt<Product>();
+        product.CategoryId = categoryId;
+
+        List<ProductImage> productImages = [];
+
+        if (!Directory.Exists(_imagesPath))
         {
-            var isFound = await _context.Categories.AnyAsync(x => x.Id == categoryId , cancellationToken);
-            if (!isFound)
-                return null!;
+            Directory.CreateDirectory(_imagesPath);
+        }
 
-            var product = request.Adapt<Product>();
-            product.CategoryId = categoryId;
-    
-            List<ProductImage> productImages = [];
+        foreach (var image in request.Images)
+        {
+            var uniqueFileName = $"{Guid.CreateVersion7()}{Path.GetExtension(image.FileName)}";
+            var path = Path.Combine(_imagesPath, uniqueFileName);
 
-            if (!Directory.Exists(_imagesPath))
+
+            var productImage = new ProductImage
             {
-                Directory.CreateDirectory(_imagesPath);
-            }
+                ImageName = uniqueFileName,
+                ContentType = image.ContentType,
+                ImageExtension = Path.GetExtension(image.FileName)
+            };
 
-            foreach (var image in request.Images)
+            using var stream = File.Create(path);
+            await image.CopyToAsync(stream, cancellationToken);
+
+            productImages.Add(productImage);
+
+        }
+        product.ProductImages = productImages;
+        await _context.AddAsync(product, cancellationToken);
+        await _context.SaveChangesAsync(cancellationToken);
+
+
+        return product.Adapt<ProductResponse>();
+    }
+
+    public async Task<IEnumerable<ProductResponse>> GetAllAsync(int categoryId, CancellationToken cancellationToken = default)
+    {
+        return await _context.Products.Where(X => X.CategoryId == categoryId).ProjectToType<ProductResponse>()
+            .AsNoTracking().ToListAsync(cancellationToken);
+    }
+    public async Task<ProductResponse> GetAsync(int categoryId, int productId, CancellationToken cancellationToken = default)
+    {
+        var product = await _context.Products.FirstOrDefaultAsync(x => x.Id == productId && x.CategoryId == categoryId, cancellationToken);
+        if (product is null)
+        {
+            return null!;
+        }
+        return product.Adapt<ProductResponse>();
+    }
+
+    public async Task<bool> UpdateAsync(int categoryId, int productId, UpdateProductRequest request, CancellationToken cancellationToken = default)
+    {
+        var product = await _context.Products
+            .Include(p => p.ProductImages)
+            .FirstOrDefaultAsync(x => x.Id == productId && x.CategoryId == categoryId, cancellationToken);
+
+        if (product is null)
+            return false;
+
+        if (request.Images is not null && request.Images.Count > 0)
+        {
+            _context.ProductImages.RemoveRange(product.ProductImages);
+            var productImages = new List<ProductImage>();
+
+            foreach (var image in request.Images!)
             {
                 var uniqueFileName = $"{Guid.CreateVersion7()}{Path.GetExtension(image.FileName)}";
                 var path = Path.Combine(_imagesPath, uniqueFileName);
 
+                using var stream = File.Create(path);
+                await image.CopyToAsync(stream, cancellationToken);
 
                 var productImage = new ProductImage
                 {
                     ImageName = uniqueFileName,
                     ContentType = image.ContentType,
-                    ImageExtension = Path.GetExtension(image.FileName)
+                    ImageExtension = Path.GetExtension(uniqueFileName),
+                    ProductId = product.Id
                 };
 
-                using var stream = File.Create(path);
-                await image.CopyToAsync(stream, cancellationToken);
-
                 productImages.Add(productImage);
-
             }
-            product.ProductImages = productImages;
-            await _context.AddAsync(product, cancellationToken);
-            await _context.SaveChangesAsync(cancellationToken);
+            await _context.ProductImages.AddRangeAsync(productImages);
 
-
-            return product.Adapt<ProductResponse>();
         }
 
-        public async Task<IEnumerable<ProductResponse>> GetAllAsync(int categoryId, CancellationToken cancellationToken = default)
-        {
-            return await _context.Products.Where(X => X.CategoryId == categoryId).ProjectToType<ProductResponse>()
-                .AsNoTracking().ToListAsync(cancellationToken);
-        }
 
-        public async Task<ProductResponse> GetAsync(int categoryId, int productId, CancellationToken cancellationToken = default)
-        {
-            var product = await _context.Products.FirstOrDefaultAsync(x => x.Id == productId && x.CategoryId == categoryId , cancellationToken);
-            if (product is null)
-            {
-                return null!;
-            }
-            return product.Adapt<ProductResponse>();
-        }
+        product = request.Adapt(product);
+        product.Version += 1;
 
-        public async Task<bool> UpdateAsync( int categoryId, int productId, UpdateProductRequest request, CancellationToken cancellationToken = default)
-        {
-            var product = await _context.Products
-                .Include(p => p.ProductImages)
-                .FirstOrDefaultAsync(x => x.Id == productId && x.CategoryId == categoryId , cancellationToken);
-
-            if (product is null)
-                return false;
-
-            if (request.Images is not null && request.Images.Count > 0)
-            {
-                _context.ProductImages.RemoveRange(product.ProductImages);
-                var productImages = new List<ProductImage>();
-
-                foreach (var image in request.Images!)
-                {
-                    var uniqueFileName = $"{Guid.CreateVersion7()}{Path.GetExtension(image.FileName)}";
-                    var path = Path.Combine(_imagesPath, uniqueFileName);
-
-                    using var stream = File.Create(path);
-                    await image.CopyToAsync(stream, cancellationToken);
-
-                    var productImage = new ProductImage
-                    {
-                        ImageName = uniqueFileName,
-                        ContentType = image.ContentType,
-                        ImageExtension = Path.GetExtension(uniqueFileName),
-                        ProductId = product.Id
-                    };
-
-                    productImages.Add(productImage);
-                }
-                await _context.ProductImages.AddRangeAsync(productImages);
-
-            }
+        _context.Products.Update(product);
 
 
-            product = request.Adapt(product);
-            product.Version += 1;
+        await _context.SaveChangesAsync(cancellationToken);
 
-            _context.Products.Update(product);
-            
-           
-            await _context.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+    public async Task<bool> DeleteAsync(int id, CancellationToken cancellationToken = default)
+    {
+        var product = await _context.Products.Include(c => c.ProductImages).FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+        if (product is null)
+            return false;
 
-            return true;
-        }
-        public async Task<bool> DeleteAsync(int id, CancellationToken cancellationToken = default)
-        {
-            var product = await _context.Products.Include(c => c.ProductImages).FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
-            if (product is null)
-                return false;
+        _context.ProductImages.RemoveRange(product.ProductImages);
 
-            _context.ProductImages.RemoveRange(product.ProductImages);
+        _context.Products.Remove(product);
 
-            _context.Products.Remove(product);
-
-            await _context.SaveChangesAsync(cancellationToken);
-            return true;
-        }
+        await _context.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+    public async Task<IEnumerable<ProductResponse>> GetByHighlightTypeAsync(ProductHighlightType type, CancellationToken cancellationToken = default)
+    {
+        return await _context.Products
+                                     .Where(p => p.HighlightType == type)
+                                     .ProjectToType<ProductResponse>()
+                                     .AsNoTracking()
+                                     .ToListAsync(cancellationToken);
 
     }
+
+    public async Task<OneOf<bool,ErrorResponse>> ToggleStatus(int id, ProductHighlightType type, CancellationToken cancellationToken = default)
+    {
+        var product = await _context.Products.FindAsync(id, cancellationToken);
+        if (product is null)
+            return new ErrorResponse("Product is Not found");
+
+        product.HighlightType = type;
+        await _context.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
+
 }
