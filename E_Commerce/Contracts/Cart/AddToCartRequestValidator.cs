@@ -4,8 +4,6 @@
     {
         public AddToCartRequestValidator()
         {
-       
-
             RuleFor(x => x.ProductId)
             .NotEmpty().GreaterThan(0).WithMessage("ProductId must be greater than zero.");
 

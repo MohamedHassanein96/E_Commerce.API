@@ -3,7 +3,6 @@ global using Microsoft.EntityFrameworkCore;
 global using E_Commerce.Entities;
 global using Microsoft.EntityFrameworkCore.Metadata.Builders;
 global using FluentValidation;
-global using E_Commerce.Contracts.Company;
 global using Mapster;
 global using E_Commerce.Services;
 global using Microsoft.AspNetCore.Mvc;
@@ -16,7 +15,9 @@ global using Microsoft.AspNetCore.Identity;
 global using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 global using E_Commerce.Contracts.Cart;
 global using E_Commerce.SoftDelete;
-
+global using E_Commerce.CustomExceptions;
+global using OneOf;
+global using Stripe.Checkout;
 
 
 

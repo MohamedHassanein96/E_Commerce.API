@@ -1,5 +1,4 @@
 ﻿using E_Commerce.Contracts.Review;
-using E_Commerce.Extension;
 using OneOf;
 
 namespace E_Commerce.Services
@@ -10,11 +9,12 @@ namespace E_Commerce.Services
         {
 
             if (string.IsNullOrEmpty(userId))
-                return new ErrorResponse("User Not Found");
+                return new ErrorResponse("User Not Found", StatusCodes.Status404NotFound);
 
 
             var review = request.Adapt<Review>();
             review.UserId = userId;
+            review.Comment = request.Comment ?? string.Empty;
             _context.Reviews.Add(review);
 
             await _context.SaveChangesAsync();
@@ -38,7 +38,7 @@ namespace E_Commerce.Services
         public async Task<OneOf<IEnumerable<ReviewResponse>, ErrorResponse>> GetReviewsByProductIdAsync(string userId, int productId)
         {
             if (string.IsNullOrEmpty(userId))
-                return new ErrorResponse("User not authenticated");
+                return new ErrorResponse("User not authenticated", StatusCodes.Status404NotFound);
 
             return await _context.Reviews
                                     .Where(r => r.ProductId == productId)

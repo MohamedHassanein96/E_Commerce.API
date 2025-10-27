@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using E_Commerce.Extension;
+using Microsoft.AspNetCore.Authorization;
 
 namespace E_Commerce.Controllers
 {
@@ -10,9 +11,10 @@ namespace E_Commerce.Controllers
         private readonly ICartService _cartService = cartService;
 
         [HttpPost("")]
+        //[ServiceFilter(typeof(ValidateUserExistsFilter))]
         public async Task<IActionResult> Add([FromBody] AddToCartRequest request, CancellationToken cancellationToken)
         {
-            var result = await _cartService.AddToCartAsync(request, cancellationToken);
+            var result = await _cartService.AddToCartAsync(User.GetUserId()!, request, cancellationToken);
             return result.Match<IActionResult>(
                   success => Ok(success),
                   error => BadRequest(error.Message));
@@ -22,24 +24,22 @@ namespace E_Commerce.Controllers
         [HttpGet("")]
         public async Task<IActionResult> Get(CancellationToken cancellationToken)
         {
-            var result = await _cartService.GetCartDetailsAsync(cancellationToken);
+            var result = await _cartService.GetCartDetailsAsync(User.GetUserId()!, cancellationToken);
 
             return result.Match<IActionResult>(
-              success => Ok(),
-              error => BadRequest($"Failed: {error.Message}"));
-
-
+              success => Ok(success),
+              error => Unauthorized(error.Message));
         }
 
 
         [HttpPut("decrement")]
         public async Task<IActionResult> Decrement([FromBody] DecrementRequest request, CancellationToken cancellationToken)
         {
-            var result = await _cartService.DecrementAsync(request, cancellationToken);
+            var isDecremented = await _cartService.DecrementAsync(User.GetUserId()!, request, cancellationToken);
 
-            return result.Match<IActionResult>(
-             success => Ok(),
-              error => BadRequest($"Failed: {error.Message}"));
+            if (isDecremented)
+                return NoContent();
+            return BadRequest();
         }
 
 
@@ -47,28 +47,21 @@ namespace E_Commerce.Controllers
         public async Task<IActionResult> Increment([FromBody] IncrementRequest request, CancellationToken cancellationToken)
         {
 
-            var result = await _cartService.IncrementAsync(request, cancellationToken);
-            return result.Match<IActionResult>(
-           success => Ok(),
-           error => BadRequest($"Failed: {error.Message}"));
+            var isIncremented = await _cartService.IncrementAsync(User.GetUserId()!, request, cancellationToken);
+            if (isIncremented)
+                return NoContent();
+            return BadRequest();
         }
 
         [HttpPut("delete")]
         public async Task<IActionResult> Delete([FromBody] DeleteRequest request, CancellationToken cancellationToken)
         {
-            var result = await _cartService.DeleteAsync(request, cancellationToken);
-            return result.Match<IActionResult>(
-            success => Ok(),
-            error => BadRequest($"Failed: {error.Message}"));
+            var isDeleted = await _cartService.DeleteAsync(User.GetUserId()!, request, cancellationToken);
+            if (isDeleted)
+                return NoContent();
+            return BadRequest();
         }
 
-        [HttpPost("pay")]
-        public async Task<IActionResult> Pay(CancellationToken cancellationToken)
-        {
-            var result = await _cartService.PayAsync(cancellationToken);
-            return result.Match<IActionResult>(
-                  success => Ok(),
-                  error => BadRequest(error.Message));
-        }
+       
     }
 }

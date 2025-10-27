@@ -1,7 +1,8 @@
-﻿namespace E_Commerce.Mapping
+﻿using Microsoft.AspNetCore.Http;
+
+namespace E_Commerce.Mapping
 {
-    public class MappingConfigv 
-    {
-        
+    public class MappingConfig 
+    { 
     }
 }

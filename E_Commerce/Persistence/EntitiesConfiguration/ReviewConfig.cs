@@ -1,5 +1,4 @@
-﻿
-namespace E_Commerce.Persistence.EntitiesConfiguration
+﻿namespace E_Commerce.Persistence.EntitiesConfiguration
 {
     public class ReviewConfig : IEntityTypeConfiguration<Review>
 

@@ -4,10 +4,7 @@
     { 
         public bool IsDeleted { get; set; }
         public DateTime? DateDeleted { get; set; }
+        string? DeletedBy { get; set; } // 🟢 مين اللي مسح
 
-        public void Delete();
-
-        public void UndoDelete();
-        
     }
 }
