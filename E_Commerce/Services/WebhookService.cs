@@ -22,13 +22,13 @@ namespace E_Commerce.Services
 
                 if (order is null)
                 {
-                    Console.WriteLine($"❌ Order not found for Session ID: {stripeSessionId}");
+                    Console.WriteLine($"Order not found for Session ID: {stripeSessionId}");
                     throw new Exception("Order not found for the given Stripe session ID.");
                 }
 
                 if (order.PaymentStatus == PaymentStatus.Paid)
                 {
-                    Console.WriteLine($"⚠️ Order {order.Id} already marked as Paid.");
+                    Console.WriteLine($"Order {order.Id} already marked as Paid.");
                     return;
                 }
 
@@ -41,7 +41,7 @@ namespace E_Commerce.Services
 
                     if (product is null)
                     {
-                        Console.WriteLine($"⚠️ Product for order item {item.Id} not found.");
+                        Console.WriteLine($"Product for order item {item.Id} not found.");
                         continue;
                     }
 
@@ -66,7 +66,7 @@ namespace E_Commerce.Services
             catch (Exception ex)
             {
                 await transaction.RollbackAsync();
-                _logger.LogError(ex, "❌ Error while marking order as paid for Stripe session {StripeSessionId}", stripeSessionId);
+                _logger.LogError(ex, "Error while marking order as paid for Stripe session {StripeSessionId}", stripeSessionId);
                 throw;
             }
         }
